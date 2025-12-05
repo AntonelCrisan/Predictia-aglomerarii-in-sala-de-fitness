@@ -19,7 +19,7 @@ rf_model = joblib.load("rf_model.pkl")
 
 class PredictRequest(BaseModel):
     date: str  # format: "2025-08-01"
-    hour: str  # format: "17:00"
+    hour: str  
 
 @app.post("/predict")
 def predict_people(req: PredictRequest):
