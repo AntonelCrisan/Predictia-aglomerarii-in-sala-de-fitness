@@ -1,0 +1,77 @@
+/* Container general */
+.gyms-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: white;
+  text-align: center;
+}
+
+/* Titlu */
+.gyms-title {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* Subtitlu */
+.gyms-subtitle {
+  opacity: 0.8;
+  margin-bottom: 40px;
+}
+
+/* Grid de carduri */
+.gyms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 25px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Card individual */
+.gym-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  text-align: center;
+  transition: transform 0.25s ease, background 0.3s ease;
+}
+
+.gym-card:hover {
+  transform: translateY(-6px);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Titlul din card */
+.gym-card h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Locația */
+.gym-card p {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-bottom: 18px;
+}
+
+/* Button */
+.gym-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 12px;
+  background: #76c893;
+  color: #0d1b1e;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.gym-btn:hover {
+  background: #52b788;
+}

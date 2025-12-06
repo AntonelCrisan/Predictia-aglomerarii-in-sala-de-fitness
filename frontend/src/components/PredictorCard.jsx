@@ -1,12 +1,16 @@
+import { useLocation } from "react-router-dom";
 import { useState } from "react";
 import DatePicker from "react-datepicker";
 import TimePicker from "react-time-picker";
 import "react-datepicker/dist/react-datepicker.css";
 import "react-time-picker/dist/TimePicker.css";
-import "react-clock/dist/Clock.css";
 import "./Predictor.css";
 
 function PredictorCard() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const selectedGym = params.get("gym");
+
   const [date, setDate] = useState(null);
   const [hour, setHour] = useState(null);
   const [prediction, setPrediction] = useState(null);
@@ -28,7 +32,8 @@ function PredictorCard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: formatDate(date),
-        hour: hour
+        hour: hour,
+        gym: selectedGym
       })
     });
 
@@ -40,8 +45,8 @@ function PredictorCard() {
   return (
     <div className="predictor-container">
       <div className="predictor-card">
-        <h2>Predicție Aglomerare Sala de Fitness</h2>
-        <p className="subtitle">Alege data și ora în stil modern.</p>
+        <h1>Predicție Aglomerare Sala de Fitness</h1>
+        <p className="subtitle">Alege data și ora pentru a afla câte persoane vor fi în sală.</p>
 
         <div className="input-group">
           <label>Data</label>
