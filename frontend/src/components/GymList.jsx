@@ -1,18 +1,17 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import "./GymList.css";
 
 function GymsList() {
   const navigate = useNavigate();
+  const [gyms, setGyms] = useState([]);
 
-  const gyms = [
-    { id: 1, name: "FitZone Arena", location: "Bd. Unirii 21, București" },
-    { id: 2, name: "PowerGym Pro", location: "Str. Victoriei 9, Ploiești" },
-    { id: 3, name: "IronTemple", location: "Str. Mureșului 12, Cluj-Napoca" },
-    { id: 4, name: "Urban Fitness Club", location: "Str. Libertății 33, Iași" },
-    { id: 5, name: "Titanium Gym", location: "Calea Brașovului 40, Brașov" },
-    { id: 6, name: "EnergyFit Studio", location: "Str. Dunării 8, Constanța" },
-    { id: 7, name: "Athletic Pro Center", location: "Str. Centrală 4, Timișoara" }
-  ];
+  useEffect(() => {
+    fetch("http://localhost:8000/sali")
+      .then((res) => res.json())
+      .then((data) => setGyms(data))
+      .catch((err) => console.error("Eroare la preluarea sălilor:", err));
+  }, []);
 
   return (
     <div className="gyms-container">
@@ -22,13 +21,14 @@ function GymsList() {
       <div className="gyms-grid">
         {gyms.map((gym) => (
           <div className="gym-card" key={gym.id}>
-            <h2>{gym.name}</h2>
-            <p>{gym.location}</p>
+            <h2>{gym.nume}</h2>
+            <p>{gym.localitate}, {gym.judet}</p>
+            <p>{gym.adresa}</p>
 
             <button
               className="gym-btn"
               onClick={() =>
-                navigate(`/predict?gym=${encodeURIComponent(gym.name)}`)
+                navigate(`/predict?gym=${encodeURIComponent(gym.nume)}`)
               }
             >
               Vezi detalii

@@ -4,6 +4,7 @@ import pandas as pd
 import joblib
 from fastapi.middleware.cors import CORSMiddleware
 import datetime
+from database import get_connection
 
 app = FastAPI()
 
@@ -49,3 +50,16 @@ def predict_people(req: PredictRequest):
     prediction = rf_model.predict(features)[0]
 
     return {"predicted_people": round(float(prediction))}
+
+#Endpoint pentru afisarea salilor din baza de date
+@app.get("/sali")
+def get_sali():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT id, nume, localitate, judet, adresa FROM sali")
+    results = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return results
