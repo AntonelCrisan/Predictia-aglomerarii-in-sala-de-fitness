@@ -28,7 +28,7 @@ function GymsList() {
             <button
               className="gym-btn"
               onClick={() =>
-                navigate(`/predict?gym=${encodeURIComponent(gym.nume)}`)
+                navigate(`/predict?gym=${encodeURIComponent(gym.id)}`)
               }
             >
               Vezi detalii

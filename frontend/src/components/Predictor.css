@@ -282,3 +282,60 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .react-time-picker__clock {
   display: none !important;
 }
+/* ======= MACHINE GRID ======= */
+
+.machines-title {
+  margin-top: 20px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.machines-grid {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Card pentru fiecare aparat */
+.machine-card {
+  background: rgba(255,255,255,0.12);
+  padding: 12px;
+  border-radius: 12px;
+  text-align: left;
+  color: white;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* Nume aparat */
+.machine-name {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 5px;
+  text-transform: capitalize;
+}
+
+/* Bara progres */
+.machine-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+/* Progres disponibilitate */
+.machine-bar-fill {
+  height: 100%;
+  background: #76c893;
+  transition: width 0.4s ease;
+}
+
+/* Procent */
+.machine-percent {
+  font-size: 13px;
+  text-align: right;
+  opacity: 0.8;
+}
