@@ -18,8 +18,14 @@ function PredictorCard() {
   const [loading, setLoading] = useState(false);
 
   const formatDate = (d) => {
-    if (!d) return "";
-    return d.toISOString().split("T")[0];
+    return d ? d.toISOString().split("T")[0] : "";
+  };
+
+  // Culoare pe baza procentului
+  const getColor = (pct) => {
+    if (pct < 25) return "#76c893"; // verde
+    if (pct < 55) return "#f9c74f"; // galben
+    return "#e63946"; // roșu
   };
 
   const getPrediction = async () => {
@@ -43,43 +49,30 @@ function PredictorCard() {
     });
 
     const data = await response.json();
-    console.log("RESPONSE FROM BACKEND:", data);
-
     const res = data?.predictie || {};
 
-    // -----------------------------
-    // 1. EXTRAGERE NUMĂR OAMENI
-    // -----------------------------
+    // === OAMENI ===
     const rawPeople =
-      typeof res.number_people !== "undefined"
+      res.number_people !== undefined
         ? res.number_people
         : res.numar_oameni;
 
-    let peopleParsed = Number(rawPeople);
+    const parsedPeople = Number(rawPeople);
+    setPredictionPeople(isNaN(parsedPeople) ? "Eroare" : Math.round(parsedPeople));
 
-    if (!rawPeople || isNaN(peopleParsed)) {
-      console.error("Nu am găsit field-ul pentru numărul de oameni:", res);
-      setPredictionPeople("Eroare");
-    } else {
-      setPredictionPeople(Math.round(peopleParsed));
-    }
-
-    // -----------------------------
-    // 2. APARATE — extragem DOAR restul cheilor
-    // -----------------------------
+    // === APARATE ===
     const machines = {};
-
-    Object.entries(res).forEach(([name, value]) => {
+    Object.entries(res).forEach(([name, v]) => {
       if (name === "number_people" || name === "numar_oameni") return;
 
-      let v = Number(value);
-      if (isNaN(v)) v = 0;
+      let pct = Number(v);
+      if (pct <= 1) pct = pct * 100;
+      pct = Math.max(0, Math.min(100, pct)); 
 
-      // normalizare la 0–100%
-      let pct = v <= 1 ? v * 100 : v;
-      pct = Math.max(0, Math.min(100, pct));
-
-      machines[name] = pct / 100; // salvăm intern ca 0–1
+      machines[name] = {
+        pct,
+        color: getColor(pct)
+      };
     });
 
     setPredictionMachines(machines);
@@ -87,81 +80,89 @@ function PredictorCard() {
   };
 
   return (
-    <div className="predictor-container">
-      <div className="predictor-card">
+    <div
+      className={`predictor-layout ${
+        predictionPeople !== null ? "with-results" : ""
+      }`}
+    >
+      {/* ====== LEFT SIDE – FORM ====== */}
+      <div className="predictor-left">
+        <div className="predictor-card">
+          <h1>Predicție Aglomerare Sala de Fitness</h1>
+          <p className="subtitle">
+            Alege data și ora pentru a afla câte persoane vor fi în sală.
+          </p>
 
-        <h1>Predicție Aglomerare Sala de Fitness</h1>
-        <p className="subtitle">
-          Alege data și ora pentru a afla câte persoane vor fi în sală.
-        </p>
-
-        {/* DATA */}
-        <div className="input-group">
-          <label>Data</label>
-          <DatePicker
+          <div className="input-group">
+            <label>Data</label>
+           <DatePicker
             selected={date}
-            onChange={(d) => setDate(d)}
+            onChange={setDate}
+            minDate={new Date()}
             className="modern-input"
             placeholderText="Selectează data"
             calendarClassName="glass-calendar"
           />
+          </div>
+
+          <div className="input-group">
+            <label>Ora</label>
+            <TimePicker
+              onChange={setHour}
+              value={hour}
+              className="modern-time"
+              disableClock={true}
+              clearIcon={null}
+              format="HH:mm"
+              hourPlaceholder="--"
+              minutePlaceholder="--"
+            />
+          </div>
+
+          <button className="predict-btn" onClick={getPrediction}>
+            {loading ? "Se calculează…" : "Predict"}
+          </button>
         </div>
+      </div>
 
-        {/* ORA */}
-        <div className="input-group">
-          <label>Ora</label>
-          <TimePicker
-            onChange={setHour}
-            value={hour}
-            className="modern-time"
-            disableClock={true}
-            clearIcon={null}
-            format="HH:mm"
-            hourPlaceholder="--"
-            minutePlaceholder="--"
-          />
-        </div>
-
-        {/* BUTTON */}
-        <button className="predict-btn" onClick={getPrediction}>
-          {loading ? "Se calculează…" : "Predict"}
-        </button>
-
-        {/* REZULTAT OAMENI */}
-        {predictionPeople !== null && (
+      {/* ====== RIGHT SIDE – DASHBOARD ====== */}
+      {predictionPeople !== null && (
+        <div className="predictor-right">
           <div className="result-box">
-            <h3>{isNaN(predictionPeople) ? "Eroare" : predictionPeople + " persoane"}</h3>
+            <h3>
+              {isNaN(predictionPeople)
+                ? "Eroare"
+                : predictionPeople + " persoane"}
+            </h3>
             <p>estimare pentru perioada selectată</p>
           </div>
-        )}
 
-        {/* APARATE */}
-        {Object.keys(predictionMachines).length > 0 && (
-          <div className="machines-box">
-            <h2>Disponibilitate aparate</h2>
+          <div className="heatmap-container">
+            <h3>Distribuție utilizare aparate</h3>
 
-            <div className="machines-grid">
-              {Object.entries(predictionMachines).map(([name, value]) => (
-                <div className="machine-card" key={name}>
-                  <div className="machine-name">{name.replace(/_/g, " ")}</div>
+            <div className="heatmap-grid">
+              {Object.entries(predictionMachines).map(([name, obj]) => (
+                <div className="heatmap-item" key={name}>
+                  
+                  <div
+                    className="heatmap-color"
+                    style={{ backgroundColor: obj.color }}
+                  ></div>
 
-                  <div className="machine-bar">
-                    <div
-                      className="machine-bar-fill"
-                      style={{ width: `${Math.round(value * 100)}%` }}
-                    ></div>
+                  <div className="heatmap-label">
+                    {name.replace(/_/g, " ")}
                   </div>
 
-                  <div className="machine-percent">
-                    {Math.round(value * 100)}%
+                  <div className="heatmap-value">
+                    {Math.round(obj.pct)}%
                   </div>
+
                 </div>
               ))}
             </div>
           </div>
-        )}
-
-      </div>
+        </div>
+      )}
     </div>
   );
 }
