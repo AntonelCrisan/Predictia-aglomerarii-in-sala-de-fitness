@@ -12,7 +12,7 @@ import random
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",       # modifică dacă ai alt user
-    "password": "root",       # pune parola ta
+    "password": "",       # pune parola ta
     "database": "aglomerare_sali",
     "charset": "utf8mb4"
 }

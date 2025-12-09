@@ -1,10 +1,22 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import joblib
 import numpy as np
 import pymysql
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
+import bcrypt
+import jwt
+
+# ----------------------------------------------------
+# JWT CONFIG
+# ----------------------------------------------------
+SECRET_KEY = "schimba_acest_secret_lung_urgent"
+ALGORITHM = "HS256"
+
+# ----------------------------------------------------
+# INITIALIZARE APP
+# ----------------------------------------------------
 app = FastAPI()
 
 app.add_middleware(
@@ -13,23 +25,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # ----------------------------------------------------
-# 1. ÎNCĂRCARE MODEL SALVAT
+# ÎNCĂRCARE MODEL ML
 # ----------------------------------------------------
 bundle = joblib.load("rf_multioutput_mysql.pkl")
 model = bundle["model"]
-feature_cols = bundle["feature_cols"]
-target_cols = bundle["target_cols"]
 
-print("✔ Model încărcat cu succes.")
+print("✔ Model ML încărcat cu succes.")
 
 # ----------------------------------------------------
-# 2. CONECTARE LA BAZA DE DATE (opțional)
+# CONECTARE MYSQL
 # ----------------------------------------------------
 DB = {
     "host": "localhost",
     "user": "root",
-    "password": "root",
+    "password": "",
     "database": "aglomerare_sali",
     "charset": "utf8mb4"
 }
@@ -38,22 +49,137 @@ def get_connection():
     return pymysql.connect(**DB)
 
 # ----------------------------------------------------
-# 3. DEFINIRE API + SCHEMA REQUEST
+# MODELE SCHEMA
 # ----------------------------------------------------
 class PredictRequest(BaseModel):
-    data: str       # ex: "2025-12-18"
-    ora: str        # ex: "17:30"
-    id_sala: int    # din dropdown-ul tău
+    data: str
+    ora: str
+    id_sala: int
+
+class RegisterRequest(BaseModel):
+    nume: str
+    email: str
+    telefon: str
+    cnp: str
+    parola: str
+    rol: str
+
+class LoginRequest(BaseModel):
+    email: str
+    parola: str
 
 # ----------------------------------------------------
-# 4. FUNCTIE PENTRU PREPROCESARE FEATURES
+# JWT - GENERARE TOKEN
+# ----------------------------------------------------
+def create_token(user_id, nume, rol):
+    payload = {
+        "id": user_id,
+        "nume": nume,
+        "rol": rol,
+        "exp": datetime.utcnow() + timedelta(hours=8),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+# ----------------------------------------------------
+# REGISTER
+# ----------------------------------------------------
+@app.post("/auth/register")
+def register(req: RegisterRequest):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Verificare email existent
+    cursor.execute("SELECT id FROM utilizatori WHERE email=%s", (req.email,))
+    if cursor.fetchone():
+        raise HTTPException(400, "Email deja folosit!")
+
+    # Hash parola
+    hashed = bcrypt.hashpw(req.parola.encode(), bcrypt.gensalt()).decode()
+
+    cursor.execute("""
+        INSERT INTO utilizatori (nume, email, parola, telefon, cnp, rol)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (req.nume, req.email, hashed, req.telefon, req.cnp, req.rol))
+
+    user_id = cursor.lastrowid
+
+    # Get the created user data
+    cursor.execute("SELECT id, nume, email, rol FROM utilizatori WHERE id=%s", (user_id,))
+    user_data = cursor.fetchone()
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    user_dict = {
+        "id": user_data[0],
+        "nume": user_data[1],
+        "email": user_data[2],
+        "rol": user_data[3]
+    }
+
+    return {"status": "success", "message": "Cont creat cu succes!", "data": user_dict}
+
+# ----------------------------------------------------
+# LOGIN
+# ----------------------------------------------------
+@app.post("/auth/login")
+def login(req: LoginRequest):
+    conn = get_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT * FROM utilizatori WHERE email=%s", (req.email,))
+    user = cursor.fetchone()
+
+    if not user:
+        raise HTTPException(404, "Email invalid.")
+
+    if not bcrypt.checkpw(req.parola.encode(), user["parola"].encode()):
+        raise HTTPException(400, "Parola greșită.")
+
+    token = create_token(user["id"], user["nume"], user["rol"])
+
+    return {
+        "id": user["id"],
+        "nume": user["nume"],
+        "email": user["email"],
+        "rol": user["rol"]
+    }
+
+# ----------------------------------------------------
+# ADMIN — LISTARE UTILIZATORI
+# ----------------------------------------------------
+@app.get("/admin/users")
+def admin_list_users():
+    conn = get_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute("SELECT id, nume, email, telefon, cnp, rol FROM utilizatori")
+    users = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return users
+
+# ----------------------------------------------------
+# ADMIN — ȘTERGERE UTILIZATOR
+# ----------------------------------------------------
+@app.delete("/admin/delete/{user_id}")
+def admin_delete_user(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM utilizatori WHERE id=%s", (user_id,))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"status": "success", "message": "User șters."}
+
+# ----------------------------------------------------
+# FEATURE EXTRACTOR
 # ----------------------------------------------------
 def extract_features(data_str, ora_str, id_sala):
-    """
-    Primește data & ora selectate în frontend
-    => extrage toate feature-urile necesare modelului
-    """
-
     dt = datetime.strptime(f"{data_str} {ora_str}", "%Y-%m-%d %H:%M")
 
     zi = dt.day
@@ -61,38 +187,24 @@ def extract_features(data_str, ora_str, id_sala):
     an = dt.year
     ora = dt.hour
 
-    # Derivate
     e_weekend = 1 if dt.weekday() >= 5 else 0
-    e_vacanta = 0  # poți adăuga logici reale
-    temperatura = 20  # placeholder — dacă vrei putem integra API METEO
-    e_inceput = 0
-    e_derulare = 1
 
-    return np.array([[zi, luna, an, ora, 
-                      e_weekend, e_vacanta, temperatura,
-                      e_inceput, e_derulare, id_sala]])
+    return np.array([[zi, luna, an, ora,
+                      e_weekend, 0, 20, 0, 1, id_sala]])
 
 # ----------------------------------------------------
-# 5. ENDPOINT DE PREZICERE
+# PREZICERE
 # ----------------------------------------------------
 @app.post("/predict")
-async def predict(req: PredictRequest):
-
-    # extragere features
+def predict(req: PredictRequest):
     X = extract_features(req.data, req.ora, req.id_sala)
-
-    # predicția modelului
     preds = model.predict(X)[0]
 
-    # prima coloană = număr oameni
     number_people = max(0, float(preds[0]))
-
-    # calculăm procentajele LOGIC, nu din ML
-    max_people = 30  # poți ajusta în funcție de sală
+    max_people = 30
     base_pct = (number_people / max_people) * 100
 
     import random
-
     usage = {
         "ocupare_picioare": base_pct * random.uniform(0.8, 1.2),
         "ocupare_spate": base_pct * random.uniform(0.75, 1.1),
@@ -103,24 +215,18 @@ async def predict(req: PredictRequest):
         "ocupare_full_body": base_pct * random.uniform(1.0, 1.3),
     }
 
-    # limitare valori între 0–100%
     usage = {k: min(100, max(0, round(v))) for k, v in usage.items()}
 
     return {
         "status": "success",
         "sala": req.id_sala,
-        "input": {
-            "data": req.data,
-            "ora": req.ora
-        },
-        "predictie": {
-            "numar_oameni": round(number_people),
-            **usage
-        }
+        "input": {"data": req.data, "ora": req.ora},
+        "predictie": {"numar_oameni": round(number_people), **usage}
     }
 
-
-#Endpoint pentru afisarea salilor din baza de date
+# ----------------------------------------------------
+# SALI
+# ----------------------------------------------------
 @app.get("/sali")
 def get_sali():
     conn = get_connection()

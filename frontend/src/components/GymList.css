@@ -75,3 +75,49 @@
 .gym-btn:hover {
   background: #52b788;
 }
+/* 🔹 Bara de sus */
+.top-nav {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.nav-btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 12px;
+  background: #76c893;
+  color: #0d1b1e;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.nav-btn:hover {
+  background: #52b788;
+  transform: translateY(-3px);
+}
+
+/* 🔹 User Info */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: white;
+  font-weight: 600;
+}
+
+.welcome-nav {
+  font-size: 16px;
+}
+
+.logout-btn {
+  background: #ff6b6b !important;
+}
+
+.logout-btn:hover {
+  background: #ff5252 !important;
+}
