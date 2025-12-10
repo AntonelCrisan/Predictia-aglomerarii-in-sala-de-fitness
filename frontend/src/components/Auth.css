@@ -1,0 +1,204 @@
+/* ============================
+   GLOBAL AUTH LAYOUT
+============================ */
+.auth-container {
+  width: 100%;
+  min-height: 100vh;
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+/* ============================
+   FORM CARD
+============================ */
+.auth-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(25px);
+  border-radius: 24px;
+  padding: 55px 45px;
+  width: 100%;
+  max-width: 520px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  animation: fadeIn 0.7s ease;
+}
+
+/* TITLU */
+.auth-card h2 {
+  font-size: 34px;
+  font-weight: 800;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #ffffff, #a8dadc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================
+   INPUT GROUPS
+============================ */
+.auth-group {
+  margin-bottom: 32px; 
+  text-align: left;
+  width: 100%;
+}
+
+.auth-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* INPUT MAI MARE & ELEGANT */
+.auth-input {
+  width: 100%;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+  backdrop-filter: blur(12px);
+  outline: none;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+}
+
+.auth-input:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.auth-input:focus {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: #76c893;
+  box-shadow: 0 0 0 4px rgba(118, 200, 147, 0.25);
+}
+
+.auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ============================
+   SELECT FIELD
+============================ */
+.auth-select {
+  width: 100%;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  font-size: 17px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+.auth-select option {
+  color: black;
+}
+
+/* ============================
+   ERROR MESSAGES
+============================ */
+.error {
+  color: #ff6b6b;
+  font-size: 14px;
+  margin-top: 6px;
+  margin-bottom: -20px;
+  font-weight: 600;
+}
+
+/* ============================
+   PASSWORD SHOW/HIDE ICON
+============================ */
+.password-wrapper {
+  position: relative;
+}
+
+.toggle-pass {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 22px;
+  user-select: none;
+}
+
+/* ============================
+   BUTTON
+============================ */
+.auth-btn {
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(135deg, #76c893, #52b788);
+  border: none;
+  border-radius: 16px;
+  color: white;
+  font-weight: 800;
+  font-size: 17px;
+  text-transform: uppercase;
+  cursor: pointer;
+  letter-spacing: 0.6px;
+  margin-top: 30px;
+  box-shadow: 0 14px 34px rgba(118, 200, 147, 0.35);
+  transition: 0.3s ease;
+}
+
+.auth-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(118, 200, 147, 0.45);
+}
+
+.auth-btn:active {
+  transform: translateY(0);
+}
+
+/* ============================
+   ANIMATIONS
+============================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================
+   RESPONSIVE
+============================ */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 40px 30px;
+  }
+
+  .auth-input,
+  .auth-select {
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  .auth-btn {
+    padding: 18px;
+    font-size: 15px;
+  }
+}
+
