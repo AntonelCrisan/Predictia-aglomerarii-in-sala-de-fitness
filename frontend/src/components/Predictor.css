@@ -505,3 +505,45 @@
 .react-datepicker__triangle {
   display: none !important;
 }
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+}
+
+.popup-card {
+  background: #1f2b38;
+  padding: 30px;
+  border-radius: 16px;
+  width: 450px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  animation: fadeIn 0.25s ease;
+}
+
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.close-btn {
+  margin-top: 20px;
+  width: 100%;
+  background: #76c893;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  background: #52b788;
+}

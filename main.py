@@ -67,7 +67,10 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     parola: str
-
+class DetaliiAparateRequest(BaseModel):
+    categorie: str      # ex: "picioare"
+    procent: float      # ex: 35 (%)
+    id_sala: int        # sala selectată
 # ----------------------------------------------------
 # JWT - GENERARE TOKEN
 # ----------------------------------------------------
@@ -238,3 +241,57 @@ def get_sali():
     cursor.close()
     conn.close()
     return results
+
+
+@app.post("/detalii_aparate")
+def detalii_aparate(req: DetaliiAparateRequest):
+
+    categorie = req.categorie.lower()  # ex: "picioare"
+    procent = req.procent              # procent de ocupare
+    id_sala = req.id_sala              # id sală
+
+    # 1. Determinăm tabela în funcție de categorie
+    table = f"aparate_{categorie}"     # ex: "aparate_picioare"
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 2. Preluăm LISTA APARATELOR VALIDE din tabelul categoriei
+        cursor.execute(f"SELECT * FROM {table} LIMIT 1")
+        row = cursor.fetchone()
+
+        if not row:
+            return {
+                "aparate": [],
+                "estimare": {}
+            }
+
+        # coloane: skip prima coloană (ID)
+        col_names = [desc[0] for desc in cursor.description][1:]
+        values = row[1:]
+
+        aparate = [
+            col for col, val in zip(col_names, values)
+            if val == 1
+        ]
+
+        # 3. Generăm o estimare foarte simplă pentru fiecare aparat
+        # exemplu: fix 1 persoană dacă procentul > 0
+        estimare = {
+            aparat: (1 if procent > 0 else 0)
+            for aparat in aparate
+        }
+
+        return {
+            "aparate": aparate,
+            "estimare": estimare
+        }
+
+    except Exception as e:
+        print("EROARE /detalii_aparate:", e)
+        return {"aparate": [], "estimare": {}}
+
+    finally:
+        cursor.close()
+        conn.close()
