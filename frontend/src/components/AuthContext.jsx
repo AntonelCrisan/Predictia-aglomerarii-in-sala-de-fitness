@@ -23,12 +23,13 @@ export function AuthProvider({ children }) {
 
   const login = (userData) => {
     try {
-      if (!userData || !userData.nume || !userData.rol) {
-        console.error("Invalid user data:", userData);
+      if (!userData || !userData.user || !userData.token) {
+        console.error("Invalid login response:", userData);
         return;
       }
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
+      setUser(userData.user);
+      localStorage.setItem("user", JSON.stringify(userData.user));
+      localStorage.setItem("token", userData.token);
     } catch (error) {
       console.error("Error saving user to localStorage:", error);
     }
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
   return (

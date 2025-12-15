@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import joblib
 import numpy as np
@@ -32,7 +32,7 @@ app.add_middleware(
 bundle = joblib.load("rf_multioutput_mysql.pkl")
 model = bundle["model"]
 
-print("✔ Model ML încărcat cu succes.")
+print("Model ML incarcat cu succes.")
 
 # ----------------------------------------------------
 # CONECTARE MYSQL
@@ -67,10 +67,13 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     parola: str
-class DetaliiAparateRequest(BaseModel):
-    categorie: str      # ex: "picioare"
-    procent: float      # ex: 35 (%)
-    id_sala: int        # sala selectată
+
+class GymRequest(BaseModel):
+    nume: str
+    localitate: str
+    judet: str
+    adresa: str
+
 # ----------------------------------------------------
 # JWT - GENERARE TOKEN
 # ----------------------------------------------------
@@ -82,6 +85,22 @@ def create_token(user_id, nume, rol):
         "exp": datetime.utcnow() + timedelta(hours=8),
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+# ----------------------------------------------------
+# JWT - VERIFICARE TOKEN
+# ----------------------------------------------------
+def get_current_user(request: Request):
+    auth = request.headers.get("Authorization")
+    if not auth:
+        raise HTTPException(401, "Missing token")
+
+    token = auth.replace("Bearer ", "")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except:
+        raise HTTPException(401, "Token invalid sau expirat")
 
 # ----------------------------------------------------
 # REGISTER
@@ -143,17 +162,24 @@ def login(req: LoginRequest):
     token = create_token(user["id"], user["nume"], user["rol"])
 
     return {
-        "id": user["id"],
-        "nume": user["nume"],
-        "email": user["email"],
-        "rol": user["rol"]
+        "user": {
+            "id": user["id"],
+            "nume": user["nume"],
+            "email": user["email"],
+            "rol": user["rol"]
+        },
+        "token": token
     }
 
 # ----------------------------------------------------
 # ADMIN — LISTARE UTILIZATORI
 # ----------------------------------------------------
 @app.get("/admin/users")
-def admin_list_users():
+def admin_list_users(request: Request):
+    user = get_current_user(request)
+    if user["rol"] != "administrator":
+        raise HTTPException(403, "Doar administratorii pot vizualiza utilizatorii!")
+
     conn = get_connection()
     cursor = conn.cursor(pymysql.cursors.DictCursor)
 
@@ -168,7 +194,11 @@ def admin_list_users():
 # ADMIN — ȘTERGERE UTILIZATOR
 # ----------------------------------------------------
 @app.delete("/admin/delete/{user_id}")
-def admin_delete_user(user_id: int):
+def admin_delete_user(user_id: int, request: Request):
+    user = get_current_user(request)
+    if user["rol"] != "administrator":
+        raise HTTPException(403, "Doar administratorii pot șterge utilizatori!")
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -177,6 +207,24 @@ def admin_delete_user(user_id: int):
 
     cursor.close()
     conn.close()
+# ----------------------------------------------------
+# ADMIN — MODIFICARE ROL UTILIZATOR
+# ----------------------------------------------------
+@app.put("/admin/users/{user_id}")
+def admin_update_user_role(user_id: int, rol: str, request: Request):
+    user = get_current_user(request)
+    if user["rol"] != "administrator":
+        raise HTTPException(403, "Doar administratorii pot modifica rolurile utilizatorilor!")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE utilizatori SET rol=%s WHERE id=%s", (rol, user_id))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+    return {"status": "success", "message": "Rol actualizat."}
     return {"status": "success", "message": "User șters."}
 
 # ----------------------------------------------------
@@ -208,15 +256,35 @@ def predict(req: PredictRequest):
     base_pct = (number_people / max_people) * 100
 
     import random
-    usage = {
-        "ocupare_picioare": base_pct * random.uniform(0.8, 1.2),
-        "ocupare_spate": base_pct * random.uniform(0.75, 1.1),
-        "ocupare_piept": base_pct * random.uniform(0.85, 1.15),
-        "ocupare_umeri": base_pct * random.uniform(0.7, 1.05),
-        "ocupare_brate": base_pct * random.uniform(0.7, 1.1),
-        "ocupare_abdomen": base_pct * random.uniform(0.6, 1.0),
-        "ocupare_full_body": base_pct * random.uniform(1.0, 1.3),
-    }
+    # Logica realista pentru ocuparea echipamentelor in functie de numarul de oameni
+    # Folosim predictia numarului de oameni si aplicam distributie tipica pentru sali de fitness
+    if number_people == 0:
+        usage = {k: 0 for k in ["ocupare_picioare", "ocupare_spate", "ocupare_piept", "ocupare_umeri", "ocupare_brate", "ocupare_abdomen", "ocupare_full_body"]}
+    else:
+        # Distributie tipica pentru echipamente intr-o sala de fitness
+        base_dist = {
+            "ocupare_picioare": 0.20,  # populare pentru picioare
+            "ocupare_spate": 0.15,     # spate
+            "ocupare_piept": 0.18,     # piept
+            "ocupare_umeri": 0.12,     # umeri
+            "ocupare_brate": 0.15,     # brate
+            "ocupare_abdomen": 0.10,   # abdomen
+            "ocupare_full_body": 0.10, # full body
+        }
+
+        # Factor de aglomerare bazat pe ora
+        ora_int = int(req.ora.split(':')[0])  # extragem ora din "HH:MM"
+        hour_factor = 1.0
+        if 17 <= ora_int <= 20:  # ore de varf
+            hour_factor = 1.2
+        elif ora_int < 10:  # dimineata devreme
+            hour_factor = 0.7
+
+        usage = {}
+        for eq, base_ratio in base_dist.items():
+            # Ocupare proportionala cu numarul de oameni, bazata pe distributie realista
+            predicted_occupancy = base_pct * base_ratio * hour_factor
+            usage[eq] = max(0, min(100, round(predicted_occupancy)))
 
     usage = {k: min(100, max(0, round(v))) for k, v in usage.items()}
 
@@ -234,7 +302,7 @@ def predict(req: PredictRequest):
 def get_sali():
     conn = get_connection()
     cursor = conn.cursor(pymysql.cursors.DictCursor)
-    
+
     cursor.execute("SELECT id, nume, localitate, judet, adresa FROM sali")
     results = cursor.fetchall()
 
@@ -242,56 +310,65 @@ def get_sali():
     conn.close()
     return results
 
+# ----------------------------------------------------
+# ADMIN — LISTARE SALI
+# ----------------------------------------------------
+@app.get("/admin/sali")
+def admin_list_sali(request: Request):
+    user = get_current_user(request)
+    if user["rol"] != "administrator":
+        raise HTTPException(403, "Doar administratorii pot vizualiza sălile!")
 
-@app.post("/detalii_aparate")
-def detalii_aparate(req: DetaliiAparateRequest):
+    conn = get_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-    categorie = req.categorie.lower()  # ex: "picioare"
-    procent = req.procent              # procent de ocupare
-    id_sala = req.id_sala              # id sală
+    cursor.execute("SELECT id, nume, localitate, judet, adresa FROM sali")
+    results = cursor.fetchall()
 
-    # 1. Determinăm tabela în funcție de categorie
-    table = f"aparate_{categorie}"     # ex: "aparate_picioare"
+    cursor.close()
+    conn.close()
+    return results
+
+# ----------------------------------------------------
+# ADMIN — ADAUGARE SALA
+# ----------------------------------------------------
+@app.post("/admin/sali")
+def admin_add_sala(req: GymRequest, request: Request):
+    user = get_current_user(request)
+    if user["rol"] != "administrator":
+        raise HTTPException(403, "Doar administratorii pot adăuga săli!")
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    try:
-        # 2. Preluăm LISTA APARATELOR VALIDE din tabelul categoriei
-        cursor.execute(f"SELECT * FROM {table} LIMIT 1")
-        row = cursor.fetchone()
+    cursor.execute("""
+        INSERT INTO sali (nume, localitate, judet, adresa)
+        VALUES (%s, %s, %s, %s)
+    """, (req.nume, req.localitate, req.judet, req.adresa))
 
-        if not row:
-            return {
-                "aparate": [],
-                "estimare": {}
-            }
+    sala_id = cursor.lastrowid
 
-        # coloane: skip prima coloană (ID)
-        col_names = [desc[0] for desc in cursor.description][1:]
-        values = row[1:]
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-        aparate = [
-            col for col, val in zip(col_names, values)
-            if val == 1
-        ]
+    return {"status": "success", "message": "Sală adăugată cu succes!", "id": sala_id}
 
-        # 3. Generăm o estimare foarte simplă pentru fiecare aparat
-        # exemplu: fix 1 persoană dacă procentul > 0
-        estimare = {
-            aparat: (1 if procent > 0 else 0)
-            for aparat in aparate
-        }
+# ----------------------------------------------------
+# ADMIN — ȘTERGERE SALA
+# ----------------------------------------------------
+@app.delete("/admin/sali/{sala_id}")
+def admin_delete_sala(sala_id: int, request: Request):
+    user = get_current_user(request)
+    if user["rol"] != "administrator":
+        raise HTTPException(403, "Doar administratorii pot șterge săli!")
 
-        return {
-            "aparate": aparate,
-            "estimare": estimare
-        }
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    except Exception as e:
-        print("EROARE /detalii_aparate:", e)
-        return {"aparate": [], "estimare": {}}
+    cursor.execute("DELETE FROM sali WHERE id=%s", (sala_id,))
+    conn.commit()
 
-    finally:
-        cursor.close()
-        conn.close()
+    cursor.close()
+    conn.close()
+    return {"status": "success", "message": "Sală ștearsă."}

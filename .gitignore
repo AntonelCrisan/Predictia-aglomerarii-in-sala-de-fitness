@@ -1,54 +1,54 @@
 venv/
-__pycache__/
-# ======================
-# MODELUL MARE (ML)
-# ======================
+pycache/
+======================
+MODELUL MARE (ML)
+======================
 rf_model.pkl
 *.pkl
 *.sav
-*.joblib
+.joblib
 
-# ======================
-# NODE MODULES (React)
-# ======================
+======================
+NODE MODULES (React)
+======================
 node_modules/
 frontend/node_modules/
-frontend/node_modules/*
+frontend/node_modules/
 
-# ======================
-# BUILD / DIST (React)
-# ======================
+======================
+BUILD / DIST (React)
+======================
 build/
 frontend/build/
 
-# ======================
-# PNPM / Yarn artifacts
-# ======================
+======================
+PNPM / Yarn artifacts
+======================
 .pnp
 .pnp.js
 
-# ======================
-# TESTING
-# ======================
+======================
+TESTING
+======================
 coverage/
 
-# ======================
-# ENV FILES
-# ======================
+======================
+ENV FILES
+======================
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# ======================
-# SYSTEM FILES
-# ======================
+======================
+SYSTEM FILES
+======================
 .DS_Store
 
-# ======================
-# LOG FILES
-# ======================
+======================
+LOG FILES
+======================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -35,7 +35,7 @@ export default function Login() {
       login(data); // Setează utilizatorul în context
 
       // Forțează reîncărcarea paginii pentru a actualiza contextul
-      if (data.rol === "admin") window.location.href = "/admin-dashboard";
+      if (data.user.rol === "administrator") window.location.href = "/admin-dashboard";
       else window.location.href = "/";
 
     } else {
@@ -86,7 +86,7 @@ export default function Login() {
             <select className="auth-select" name="rol" value={form.rol} onChange={updateField}>
               <option value="cursant">Cursant</option>
               <option value="antrenor">Antrenor personal</option>
-              <option value="admin">Administrator</option>
+              <option value="administrator">Administrator</option>
             </select>
           </div>
 

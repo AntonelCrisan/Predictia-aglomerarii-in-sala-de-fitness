@@ -12,6 +12,9 @@ CREATE TABLE utilizatori (
     nume VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
     parola VARCHAR(255) NOT NULL,
+    telefon VARCHAR(20),
+    cnp VARCHAR(20),
+    rol VARCHAR(50) DEFAULT 'utilizator',
     id_sala INT,
     FOREIGN KEY (id_sala) REFERENCES sali(id)
         ON DELETE SET NULL

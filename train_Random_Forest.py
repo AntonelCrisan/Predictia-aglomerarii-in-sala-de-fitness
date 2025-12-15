@@ -18,7 +18,7 @@ DB_CONFIG = {
 }
 
 connection = pymysql.connect(**DB_CONFIG)
-print("✔ Conectat la MySQL.")
+print("Conectat la MySQL.")
 
 # -----------------------------------------
 # 2. CITIRE DATE DIN MySQL
@@ -36,33 +36,41 @@ SELECT
     dc.e_inceput_de_semestru,
     dc.e_semestru_in_derulare,
     HOUR(dc.ora) AS ora,
-    dc.id_sala
-FROM date_colectate dc;
+    dc.id_sala,
+    dc.ocupare_picioare,
+    dc.ocupare_spate,
+    dc.ocupare_piept,
+    dc.ocupare_umeri,
+    dc.ocupare_brate,
+    dc.ocupare_abdomen,
+    dc.ocupare_full_body
+FROM date_colectate dc
+WHERE dc.ocupare_picioare IS NOT NULL;
 """
 
 df = pd.read_sql(query, connection)
 connection.close()
 
-print(f" Am încărcat {len(df)} înregistrări din date_colectate.")
+print(f" Am incarcat {len(df)} inregistrari din date_colectate.")
 
 # -----------------------------------------
-# 3. GENERARE ȚINTE PENTRU APARATE (SINTETIC)
-#    - simulăm câți oameni sunt la fiecare zonă
+# 3. VERIFICARE DATE PENTRU APARATE
 # -----------------------------------------
 
-def add_equipment_targets(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Pentru fiecare rând (moment de timp) generăm:
-      - ocupare_picioare
-      - ocupare_spate
-      - ocupare_piept
-      - ocupare_umeri
-      - ocupare_brate
-      - ocupare_abdomen
-      - ocupare_full_body
-    pe baza numărului de oameni din sală.
-    """
-    # proporții de bază din totalul de oameni
+equipment_cols = [
+    "ocupare_picioare",
+    "ocupare_spate",
+    "ocupare_piept",
+    "ocupare_umeri",
+    "ocupare_brate",
+    "ocupare_abdomen",
+    "ocupare_full_body",
+]
+
+missing_cols = [col for col in equipment_cols if col not in df.columns or df[col].isnull().all()]
+if missing_cols:
+    print(f"Lipsesc coloanele sau date: {missing_cols}. Generam date sintetice.")
+    # Generam date sintetice daca lipsesc
     ratios = {
         "ocupare_picioare": 0.25,
         "ocupare_spate": 0.15,
@@ -73,35 +81,19 @@ def add_equipment_targets(df: pd.DataFrame) -> pd.DataFrame:
         "ocupare_full_body": 0.05,
     }
 
-    # presupunem un număr maxim rezonabil de oameni pe zonă
-    max_by_zone = {
-        "ocupare_picioare": 15,
-        "ocupare_spate": 12,
-        "ocupare_piept": 15,
-        "ocupare_umeri": 10,
-        "ocupare_brate": 12,
-        "ocupare_abdomen": 10,
-        "ocupare_full_body": 8,
-    }
-
     for zone, ratio in ratios.items():
-        values = []
-        for n in df["numar_oameni"]:
-            # bază: proporție din numărul total
-            base = n * ratio
-            # zgomot mic pentru a nu fi liniar perfect
-            noise = random.gauss(0, max(1.0, base * 0.1))
-            v = int(round(base + noise))
-            v = max(0, v)
-            v = min(v, max_by_zone[zone])
-            values.append(v)
-        df[zone] = values
-
-    return df
-
-
-df = add_equipment_targets(df)
-print("✔ Am generat țintele sintetice pentru aparate.")
+        if zone not in df.columns or df[zone].isnull().all():
+            values = []
+            for n in df["numar_oameni"]:
+                base = n * ratio * 2  # *2 pentru procent
+                noise = random.gauss(0, max(1.0, base * 0.1))
+                v = int(round(base + noise))
+                v = max(0, min(100, v))
+                values.append(v)
+            df[zone] = values
+    print("Am generat date sintetice pentru aparate.")
+else:
+    print("Folosim datele reale pentru ocuparea echipamentelor.")
 
 # -----------------------------------------
 # 4. DEFINIRE FEATURES (X) ȘI ȚINTE (y)
@@ -134,7 +126,7 @@ target_cols = [
 X = df[feature_cols]
 y = df[target_cols]
 
-print("✔ Structura X:", X.shape, "Structura y:", y.shape)
+print("Structura X:", X.shape, "Structura y:", y.shape)
 
 # -----------------------------------------
 # 5. ÎMPĂRȚIRE TRAIN / TEST
@@ -154,21 +146,21 @@ rf_model = RandomForestRegressor(
 
 print(" Antrenez modelul Random Forest...")
 rf_model.fit(X_train, y_train)
-print("✔ Antrenare finalizată.")
+print("Antrenare finalizata.")
 
 # -----------------------------------------
 # 7. EVALUARE MODEL
 # -----------------------------------------
 rf_score = rf_model.score(X_test, y_test)
-print(f"R² global (medie pe toate țintele): {rf_score:.4f}")
+print(f"R² global (medie pe toate tintele): {rf_score:.4f}")
 
 preds = rf_model.predict(X_test)
 
-# convertim în DataFrame pentru metrici per-coloană
+# convertim in DataFrame pentru metrici per-coloana
 y_test_df = pd.DataFrame(y_test, columns=target_cols)
 preds_df = pd.DataFrame(preds, columns=target_cols)
 
-print("\n Metrici per țintă:")
+print("\n Metrici per tinta:")
 for col in target_cols:
     mae = mean_absolute_error(y_test_df[col], preds_df[col])
     mse = mean_squared_error(y_test_df[col], preds_df[col])
@@ -186,4 +178,4 @@ joblib.dump(
     },
     model_path
 )
-print(f"\n Modelul a fost salvat în {model_path}")
+print(f"\n Modelul a fost salvat in {model_path}")
