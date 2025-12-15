@@ -176,7 +176,6 @@ export default function Register() {
             <select className="auth-select" name="rol" value={form.rol} onChange={updateField}>
               <option value="cursant">Cursant</option>
               <option value="antrenor">Antrenor personal</option>
-              <option value="admin">Administrator</option>
             </select>
           </div>
 

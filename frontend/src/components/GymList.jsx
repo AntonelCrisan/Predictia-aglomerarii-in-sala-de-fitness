@@ -63,6 +63,14 @@ function GymsList() {
       {user && (
         <div className="welcome-message">
           <p>Bun venit, <strong>{user.nume || 'Utilizator'}</strong>! ({user.rol || 'N/A'})</p>
+          {user.rol === 'administrator' && (
+            <button
+              onClick={() => navigate('/admin-dashboard')}
+              className="nav-btn admin-btn"
+            >
+              Panou Administrator
+            </button>
+          )}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import PredictorCard from "./components/PredictorCard";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import AdminDashboard from "./components/AdminDashboard";
+
 function App() {
   return (
     <AuthProvider>
