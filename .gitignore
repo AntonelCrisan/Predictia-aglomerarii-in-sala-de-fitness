@@ -41,6 +41,7 @@ ENV FILES
 .env.test.local
 .env.production.local
 
+<<<<<<< HEAD
 ======================
 SYSTEM FILES
 ======================
@@ -52,3 +53,16 @@ LOG FILES
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+=======
+# ======================
+# SYSTEM FILES
+# ======================
+.DS_Store
+
+# ======================
+# LOG FILES
+# ======================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+>>>>>>> 95c168f5da60711867895770576519661b77c07d
