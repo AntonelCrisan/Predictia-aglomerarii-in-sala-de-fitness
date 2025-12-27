@@ -2,10 +2,25 @@
 .gyms-container {
   width: 100%;
   min-height: 100vh;
-  padding: 40px 20px;
+  padding: 120px 20px 40px;
   background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
   color: white;
   text-align: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Ascunde scrollbar-urile */
+.gyms-container::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 /* Titlu */
@@ -27,7 +42,7 @@
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 25px;
   max-width: 1100px;
-  margin: 0 auto;
+  margin: 20px auto;
 }
 
 /* Card individual */
@@ -75,49 +90,75 @@
 .gym-btn:hover {
   background: #52b788;
 }
+
 /* 🔹 Bara de sus */
 .top-nav {
-  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: flex-end;
-  gap: 15px;
-  margin-bottom: 25px;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 50px;
+  background: rgba(12, 25, 30, 0.92);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(118, 200, 147, 0.15);
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .nav-btn {
-  padding: 10px 18px;
+  padding: 11px 24px;
   border: none;
   border-radius: 12px;
-  background: #76c893;
+  background: linear-gradient(135deg, #76c893, #52b788);
   color: #0d1b1e;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(118, 200, 147, 0.4);
+  letter-spacing: 0.5px;
 }
 
 .nav-btn:hover {
-  background: #52b788;
+  background: linear-gradient(135deg, #52b788, #40916c);
   transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(118, 200, 147, 0.6);
 }
 
 /* 🔹 User Info */
 .user-info {
   display: flex;
   align-items: center;
-  gap: 15px;
-  color: white;
-  font-weight: 600;
+  gap: 25px;
+  padding: 12px 24px 12px 32px;
+  background: linear-gradient(135deg, rgba(118, 200, 147, 0.12), rgba(82, 183, 136, 0.08));
+  border-radius: 60px;
+  border: 1.5px solid rgba(118, 200, 147, 0.25);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 
+              inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 .welcome-nav {
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #b8e6d5;
+  letter-spacing: 0.4px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .logout-btn {
-  background: #ff6b6b !important;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a6f) !important;
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4) !important;
+  padding: 10px 22px !important;
 }
 
 .logout-btn:hover {
-  background: #ff5252 !important;
+  background: linear-gradient(135deg, #ff5252, #e63946) !important;
+  box-shadow: 0 8px 28px rgba(255, 107, 107, 0.6) !important;
+  transform: translateY(-3px) !important;
 }

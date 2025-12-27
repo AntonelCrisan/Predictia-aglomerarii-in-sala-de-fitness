@@ -1,7 +1,23 @@
 import { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
+import GymStatsModal from "./GymStatsModal";
 import "./Admin.css";
+
+// SVG Icons
+const EyeIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+);
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -9,6 +25,8 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [gyms, setGyms] = useState([]);
   const [newGym, setNewGym] = useState({ nume: "", localitate: "", judet: "", adresa: "" });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [viewingGym, setViewingGym] = useState(null);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -37,6 +55,8 @@ export default function AdminDashboard() {
   }, [user, navigate, token]);
 
   async function deleteUser(id) {
+    if (!window.confirm("Sigur vrei să ștergi acest utilizator?")) return;
+
     const res = await fetch(`http://localhost:8000/admin/delete/${id}`, {
       method: "DELETE",
       headers: {
@@ -46,6 +66,7 @@ export default function AdminDashboard() {
 
     if (res.ok) {
       setUsers(users.filter(u => u.id !== id));
+      alert("Utilizator șters cu succes!");
     } else {
       alert("Eroare la ștergere");
     }
@@ -88,6 +109,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       setGyms([...gyms, { id: data.id, ...newGym }]);
       setNewGym({ nume: "", localitate: "", judet: "", adresa: "" });
+      setShowAddForm(false);
       alert("Sală adăugată cu succes!");
     } else {
       alert("Eroare la adăugare");
@@ -95,6 +117,8 @@ export default function AdminDashboard() {
   }
 
   async function deleteGym(id) {
+    if (!window.confirm("Sigur vrei să ștergi această sală?")) return;
+
     const res = await fetch(`http://localhost:8000/admin/sali/${id}`, {
       method: "DELETE",
       headers: {
@@ -104,6 +128,7 @@ export default function AdminDashboard() {
 
     if (res.ok) {
       setGyms(gyms.filter(g => g.id !== id));
+      alert("Sală ștearsă cu succes!");
     } else {
       alert("Eroare la ștergere");
     }
@@ -113,7 +138,14 @@ export default function AdminDashboard() {
     logout();
     window.location.href = "/";
   };
-
+const handleViewStats = async (gym) => {
+  const res = await fetch(
+    `http://localhost:8000/admin/sali/${gym.id}/statistici`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const stats = await res.json();
+  setViewingGym({ ...gym, stats });
+};
   return (
     <div className="admin-container">
       <nav className="admin-nav">
@@ -132,103 +164,140 @@ export default function AdminDashboard() {
 
       <h1>Panou Administrator</h1>
 
-      <h3>Gestionare utilizatori</h3>
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nume</th>
-            <th>Email</th>
-            <th>Rol</th>
-            <th>Acțiuni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(u => (
-            <tr key={u.id}>
-              <td>{u.id}</td>
-              <td>{u.nume}</td>
-              <td>{u.email}</td>
-              <td>
-                <select
-                  value={u.rol}
-                  onChange={(e) => updateUserRole(u.id, e.target.value)}
-                  style={{ padding: '5px', borderRadius: '4px' }}
-                >
-                  <option value="cursant">Cursant</option>
-                  <option value="antrenor">Antrenor personal</option>
-                  <option value="administrator">Administrator</option>
-                </select>
-              </td>
-              <td>
-                <button className="btn-delete" onClick={() => deleteUser(u.id)}>
-                  Șterge
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* ============================
+          GESTIONARE UTILIZATORI
+      ============================ */}
+     <h3>Gestionare utilizatori</h3>
 
-      <h3>Gestionare săli de fitness</h3>
+<div className="table-wrapper">
+  <table className="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nume</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Acțiuni</th>
+      </tr>
+    </thead>
+    <tbody>
+      {users.map(u => (
+        <tr key={u.id}>
+          <td>{u.id}</td>
+          <td>{u.nume}</td>
+          <td className="col-email">{u.email}</td>
+          <td>
+            <select
+              value={u.rol}
+              onChange={(e) => updateUserRole(u.id, e.target.value)}
+            >
+              <option value="cursant">Cursant</option>
+              <option value="antrenor">Antrenor personal</option>
+              <option value="administrator">Administrator</option>
+            </select>
+          </td>
+          <td>
+            <button className="btn-delete" onClick={() => deleteUser(u.id)}>
+              Șterge
+            </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
-      <div className="add-gym-form">
-        <h4>Adaugă sală nouă</h4>
-        <input
-          type="text"
-          placeholder="Nume sală"
-          value={newGym.nume}
-          onChange={(e) => setNewGym({ ...newGym, nume: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Localitate"
-          value={newGym.localitate}
-          onChange={(e) => setNewGym({ ...newGym, localitate: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Județ"
-          value={newGym.judet}
-          onChange={(e) => setNewGym({ ...newGym, judet: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Adresă"
-          value={newGym.adresa}
-          onChange={(e) => setNewGym({ ...newGym, adresa: e.target.value })}
-        />
-        <button onClick={addGym}>Adaugă sală</button>
+      {/* ============================
+          GESTIONARE SĂLI
+      ============================ */}
+      <div className="section-header">
+        <h3>Gestionare săli de fitness</h3>
+        <button 
+          className="btn-add"
+          onClick={() => setShowAddForm(!showAddForm)}
+        >
+          <PlusIcon />
+          {showAddForm ? "Anulează" : "Adaugă sală"}
+        </button>
       </div>
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nume</th>
-            <th>Localitate</th>
-            <th>Județ</th>
-            <th>Adresă</th>
-            <th>Acțiuni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gyms.map(g => (
-            <tr key={g.id}>
-              <td>{g.id}</td>
-              <td>{g.nume}</td>
-              <td>{g.localitate}</td>
-              <td>{g.judet}</td>
-              <td>{g.adresa}</td>
-              <td>
-                <button className="btn-delete" onClick={() => deleteGym(g.id)}>
-                  Șterge
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* FORMULAR ADĂUGARE SALĂ */}
+      {showAddForm && (
+        <div className="add-gym-form">
+          <h4>Adaugă sală nouă</h4>
+          <input
+            type="text"
+            placeholder="Nume sală"
+            value={newGym.nume}
+            onChange={(e) => setNewGym({ ...newGym, nume: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Localitate"
+            value={newGym.localitate}
+            onChange={(e) => setNewGym({ ...newGym, localitate: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Județ"
+            value={newGym.judet}
+            onChange={(e) => setNewGym({ ...newGym, judet: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Adresă"
+            value={newGym.adresa}
+            onChange={(e) => setNewGym({ ...newGym, adresa: e.target.value })}
+          />
+          <button onClick={addGym}>Salvează</button>
+        </div>
+      )}
+
+      {/* TABEL SĂLI */}
+      <div className="table-wrapper">
+  <table className="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nume</th>
+        <th>Localitate</th>
+        <th>Județ</th>
+        <th>Adresă</th>
+        <th>Acțiuni</th>
+      </tr>
+    </thead>
+    <tbody>
+      {gyms.map(g => (
+        <tr key={g.id}>
+          <td>{g.id}</td>
+          <td>{g.nume}</td>
+          <td>{g.localitate}</td>
+          <td>{g.judet}</td>
+          <td className="col-address">{g.adresa}</td>
+          <td>
+            <div className="action-buttons">
+              <button className="btn-view" onClick={() => handleViewStats(g)}>
+                <EyeIcon />
+              </button>
+              <button className="btn-delete" onClick={() => deleteGym(g.id)}>
+                Șterge
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+
+          {/* MODAL DETALII SALĂ */}
+          {viewingGym && viewingGym.stats && (
+      <GymStatsModal
+        gym={viewingGym}
+        onClose={() => setViewingGym(null)}
+      />
+    )}
     </div>
   );
 }

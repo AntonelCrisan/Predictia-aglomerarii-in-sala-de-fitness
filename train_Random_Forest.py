@@ -4,15 +4,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import joblib
-import random
 
 # -----------------------------------------
 # 1. CONECTARE LA BAZA DE DATE
 # -----------------------------------------
 DB_CONFIG = {
     "host": "localhost",
-    "user": "root",       # modifică dacă ai alt user
-    "password": "root",       # pune parola ta
+    "user": "root",
+    "password": "root",
     "database": "aglomerare_sali",
     "charset": "utf8mb4"
 }
@@ -21,8 +20,7 @@ connection = pymysql.connect(**DB_CONFIG)
 print("Conectat la MySQL.")
 
 # -----------------------------------------
-# 2. CITIRE DATE DIN MySQL
-#    (folosim date_colectate ca sursă)
+# 2. QUERY CORECT (JOIN PE SCHEMA REALĂ)
 # -----------------------------------------
 query = """
 SELECT
@@ -37,68 +35,93 @@ SELECT
     dc.e_semestru_in_derulare,
     HOUR(dc.ora) AS ora,
     dc.id_sala,
-    dc.ocupare_picioare,
-    dc.ocupare_spate,
-    dc.ocupare_piept,
-    dc.ocupare_umeri,
-    dc.ocupare_brate,
-    dc.ocupare_abdomen,
-    dc.ocupare_full_body
+
+    (
+        ap.leg_press +
+        ap.hack_squat +
+        ap.leg_extension +
+        ap.leg_curl +
+        ap.hip_thrust +
+        ap.abductor_machine +
+        ap.adductor_machine
+    ) AS ocupare_picioare,
+
+    (
+        asp.lat_pulldown +
+        asp.seated_row_machine +
+        asp.back_extension
+    ) AS ocupare_spate,
+
+    (
+        api.chest_press +
+        api.pec_deck +
+        api.incline_chest_press
+    ) AS ocupare_piept,
+
+    (
+        au.shoulder_press +
+        au.lateral_raises
+    ) AS ocupare_umeri,
+
+    (
+        ab.biceps_curl +
+        ab.triceps_push_down
+    ) AS ocupare_brate,
+
+    (
+        aa.ab_crunch +
+        aa.rotary_torso
+    ) AS ocupare_abdomen,
+
+    af.cable_crossover AS ocupare_full_body
+
 FROM date_colectate dc
-WHERE dc.ocupare_picioare IS NOT NULL;
+
+JOIN sala_aparate sa
+    ON sa.id_sala = dc.id_sala
+
+JOIN aparate_picioare ap
+    ON ap.id = sa.id_aparate_picioare
+
+JOIN aparate_spate asp
+    ON asp.id = sa.id_aparate_spate
+
+JOIN aparate_piept api
+    ON api.id = sa.id_aparate_piept
+
+JOIN aparate_umeri au
+    ON au.id = sa.id_aparate_umeri
+
+JOIN aparate_brate ab
+    ON ab.id = sa.id_aparate_brate
+
+JOIN aparate_abdomen aa
+    ON aa.id = sa.id_aparate_abdomen
+
+JOIN aparate_full_body af
+    ON af.id = sa.id_aparate_full_body;
 """
 
 df = pd.read_sql(query, connection)
 connection.close()
 
-print(f" Am incarcat {len(df)} inregistrari din date_colectate.")
+print(f"Am incarcat {len(df)} inregistrari din baza de date.")
 
 # -----------------------------------------
-# 3. VERIFICARE DATE PENTRU APARATE
+# 3. VERIFICARE DATE
 # -----------------------------------------
+print("\nPreview date:")
+print(df.head())
 
-equipment_cols = [
-    "ocupare_picioare",
-    "ocupare_spate",
-    "ocupare_piept",
-    "ocupare_umeri",
-    "ocupare_brate",
-    "ocupare_abdomen",
-    "ocupare_full_body",
-]
+print("\nValori lipsa pe coloane:")
+print(df.isnull().sum())
 
-missing_cols = [col for col in equipment_cols if col not in df.columns or df[col].isnull().all()]
-if missing_cols:
-    print(f"Lipsesc coloanele sau date: {missing_cols}. Generam date sintetice.")
-    # Generam date sintetice daca lipsesc
-    ratios = {
-        "ocupare_picioare": 0.25,
-        "ocupare_spate": 0.15,
-        "ocupare_piept": 0.20,
-        "ocupare_umeri": 0.10,
-        "ocupare_brate": 0.15,
-        "ocupare_abdomen": 0.10,
-        "ocupare_full_body": 0.05,
-    }
-
-    for zone, ratio in ratios.items():
-        if zone not in df.columns or df[zone].isnull().all():
-            values = []
-            for n in df["numar_oameni"]:
-                base = n * ratio * 2  # *2 pentru procent
-                noise = random.gauss(0, max(1.0, base * 0.1))
-                v = int(round(base + noise))
-                v = max(0, min(100, v))
-                values.append(v)
-            df[zone] = values
-    print("Am generat date sintetice pentru aparate.")
-else:
-    print("Folosim datele reale pentru ocuparea echipamentelor.")
+if df.isnull().any().any():
+    raise ValueError("Exista valori NULL in date. Verifica datele din DB.")
 
 # -----------------------------------------
-# 4. DEFINIRE FEATURES (X) ȘI ȚINTE (y)
+# 4. DEFINIRE FEATURES (X) SI TINTE (y)
 # -----------------------------------------
-
 feature_cols = [
     "zi",
     "luna",
@@ -120,23 +143,27 @@ target_cols = [
     "ocupare_umeri",
     "ocupare_brate",
     "ocupare_abdomen",
-    "ocupare_full_body",
+    "ocupare_full_body"
 ]
 
 X = df[feature_cols]
 y = df[target_cols]
 
-print("Structura X:", X.shape, "Structura y:", y.shape)
+print("\nStructura X:", X.shape)
+print("Structura y:", y.shape)
 
 # -----------------------------------------
-# 5. ÎMPĂRȚIRE TRAIN / TEST
+# 5. SPLIT TRAIN / TEST
 # -----------------------------------------
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
 )
 
 # -----------------------------------------
-# 6. MODEL RANDOM FOREST MULTI-OUTPUT
+# 6. RANDOM FOREST MULTI-OUTPUT
 # -----------------------------------------
 rf_model = RandomForestRegressor(
     n_estimators=200,
@@ -144,23 +171,22 @@ rf_model = RandomForestRegressor(
     n_jobs=-1
 )
 
-print(" Antrenez modelul Random Forest...")
+print("\nAntrenez modelul Random Forest...")
 rf_model.fit(X_train, y_train)
 print("Antrenare finalizata.")
 
 # -----------------------------------------
 # 7. EVALUARE MODEL
 # -----------------------------------------
-rf_score = rf_model.score(X_test, y_test)
-print(f"R² global (medie pe toate tintele): {rf_score:.4f}")
+r2_score = rf_model.score(X_test, y_test)
+print(f"\nR² global (medie pe toate tintele): {r2_score:.4f}")
 
 preds = rf_model.predict(X_test)
 
-# convertim in DataFrame pentru metrici per-coloana
 y_test_df = pd.DataFrame(y_test, columns=target_cols)
 preds_df = pd.DataFrame(preds, columns=target_cols)
 
-print("\n Metrici per tinta:")
+print("\nMetrici per tinta:")
 for col in target_cols:
     mae = mean_absolute_error(y_test_df[col], preds_df[col])
     mse = mean_squared_error(y_test_df[col], preds_df[col])
@@ -170,6 +196,7 @@ for col in target_cols:
 # 8. SALVARE MODEL
 # -----------------------------------------
 model_path = "rf_multioutput_mysql.pkl"
+
 joblib.dump(
     {
         "model": rf_model,
@@ -178,4 +205,5 @@ joblib.dump(
     },
     model_path
 )
-print(f"\n Modelul a fost salvat in {model_path}")
+
+print(f"\nModelul a fost salvat in fisierul: {model_path}")

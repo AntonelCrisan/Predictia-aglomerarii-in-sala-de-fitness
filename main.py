@@ -1,4 +1,7 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from db import get_db
 from pydantic import BaseModel
 import joblib
 import numpy as np
@@ -248,52 +251,147 @@ def extract_features(data_str, ora_str, id_sala):
 # ----------------------------------------------------
 @app.post("/predict")
 def predict(req: PredictRequest):
+    # === EXTRAGERE FEATURES ===
     X = extract_features(req.data, req.ora, req.id_sala)
     preds = model.predict(X)[0]
 
-    number_people = max(0, float(preds[0]))
-    max_people = 30
-    base_pct = (number_people / max_people) * 100
+    # === NUMĂR TOTAL OAMENI ===
+    total_people = max(0, int(round(float(preds[0]))))
 
-    import random
-    # Logica realista pentru ocuparea echipamentelor in functie de numarul de oameni
-    # Folosim predictia numarului de oameni si aplicam distributie tipica pentru sali de fitness
-    if number_people == 0:
-        usage = {k: 0 for k in ["ocupare_picioare", "ocupare_spate", "ocupare_piept", "ocupare_umeri", "ocupare_brate", "ocupare_abdomen", "ocupare_full_body"]}
+    if total_people == 0:
+        usage = {
+            "ocupare_picioare": 0,
+            "ocupare_spate": 0,
+            "ocupare_piept": 0,
+            "ocupare_umeri": 0,
+            "ocupare_brate": 0,
+            "ocupare_abdomen": 0,
+            "ocupare_full_body": 0,
+        }
+        allocation = {k: 0 for k in usage}
     else:
-        # Distributie tipica pentru echipamente intr-o sala de fitness
+        # === DISTRIBUȚIE REALISTĂ PE GRUPE MUSCULARE ===
         base_dist = {
-            "ocupare_picioare": 0.20,  # populare pentru picioare
-            "ocupare_spate": 0.15,     # spate
-            "ocupare_piept": 0.18,     # piept
-            "ocupare_umeri": 0.12,     # umeri
-            "ocupare_brate": 0.15,     # brate
-            "ocupare_abdomen": 0.10,   # abdomen
-            "ocupare_full_body": 0.10, # full body
+            "ocupare_picioare": 0.20,
+            "ocupare_spate": 0.15,
+            "ocupare_piept": 0.18,
+            "ocupare_umeri": 0.12,
+            "ocupare_brate": 0.15,
+            "ocupare_abdomen": 0.10,
+            "ocupare_full_body": 0.10,
         }
 
-        # Factor de aglomerare bazat pe ora
-        ora_int = int(req.ora.split(':')[0])  # extragem ora din "HH:MM"
-        hour_factor = 1.0
-        if 17 <= ora_int <= 20:  # ore de varf
-            hour_factor = 1.2
-        elif ora_int < 10:  # dimineata devreme
-            hour_factor = 0.7
+        # normalizare (siguranță matematică)
+        s = sum(base_dist.values())
+        base_dist = {k: v / s for k, v in base_dist.items()}
 
-        usage = {}
-        for eq, base_ratio in base_dist.items():
-            # Ocupare proportionala cu numarul de oameni, bazata pe distributie realista
-            predicted_occupancy = base_pct * base_ratio * hour_factor
-            usage[eq] = max(0, min(100, round(predicted_occupancy)))
+        # === ALOCARE OAMENI (CONSERVARE TOTALĂ) ===
+        allocation = {}
+        remaining = total_people
+        keys = list(base_dist.keys())
 
-    usage = {k: min(100, max(0, round(v))) for k, v in usage.items()}
+        for k in keys[:-1]:
+            allocation[k] = round(base_dist[k] * total_people)
+            remaining -= allocation[k]
+
+        allocation[keys[-1]] = remaining  # ultimul ia restul
+
+        # === PROCENTE ===
+        usage = {
+            k: round((allocation[k] / total_people) * 100)
+            for k in allocation
+        }
 
     return {
         "status": "success",
         "sala": req.id_sala,
-        "input": {"data": req.data, "ora": req.ora},
-        "predictie": {"numar_oameni": round(number_people), **usage}
+        "input": {
+            "data": req.data,
+            "ora": req.ora
+        },
+        "predictie": {
+            "numar_oameni": total_people,
+            **usage
+        },
+        #  TRIMITEM ȘI DISTRIBUȚIA INTERNĂ (FOLOSITĂ LA DETALII)
+        "distributie_oameni": allocation
     }
+class DetaliiAparateRequest(BaseModel):
+    categorie: str
+    procent: int
+    id_sala: int
+    numar_oameni: int
+
+
+@app.post("/detalii_aparate")
+def detalii_aparate(req: DetaliiAparateRequest):
+
+    # === CALCULĂM OAMENII DIN GRUPĂ ===
+    persoane_grupa = round((req.procent / 100) * req.numar_oameni)
+
+    if persoane_grupa <= 0:
+        return {
+            "categorie": req.categorie,
+            "total_persoane": 0,
+            "aparate": []
+        }
+
+    # === MAPARE CATEGORIE → TABEL ===
+    tabel_map = {
+        "picioare": "aparate_picioare",
+        "spate": "aparate_spate",
+        "piept": "aparate_piept",
+        "umeri": "aparate_umeri",
+        "brate": "aparate_brate",
+        "abdomen": "aparate_abdomen",
+        "full_body": "aparate_full_body",
+    }
+
+    if req.categorie not in tabel_map:
+        raise HTTPException(400, "Categorie invalidă")
+
+    tabel = tabel_map[req.categorie]
+
+    conn = get_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    cursor.execute(f"""
+        SELECT a.*
+        FROM {tabel} a
+        JOIN sala_aparate sa ON sa.id_{tabel} = a.id
+        WHERE sa.id_sala = %s
+    """, (req.id_sala,))
+
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not row:
+        return {
+            "categorie": req.categorie,
+            "total_persoane": persoane_grupa,
+            "aparate": []
+        }
+
+    aparate = [k for k in row.keys() if k != "id"]
+
+    # === DISTRIBUȚIE EGALĂ (CONSERVARE TOTALĂ) ===
+    per_aparat = persoane_grupa // len(aparate)
+    rest = persoane_grupa % len(aparate)
+
+    distributie = []
+    for i, aparat in enumerate(aparate):
+        distributie.append({
+            "aparat": aparat.replace("_", " ").title(),
+            "persoane": per_aparat + (1 if i < rest else 0)
+        })
+
+    return {
+        "categorie": req.categorie,
+        "total_persoane": persoane_grupa,
+        "aparate": distributie
+    }
+
 
 # ----------------------------------------------------
 # SALI
@@ -372,3 +470,46 @@ def admin_delete_sala(sala_id: int, request: Request):
     cursor.close()
     conn.close()
     return {"status": "success", "message": "Sală ștearsă."}
+
+# ----------------------------------------------------
+# ADMIN — KPI SALA
+# ----------------------------------------------------
+@app.get("/admin/sali/{id_sala}/statistici")
+def statistici_sala(id_sala: int, db: Session = Depends(get_db)):
+
+    kpi = db.execute(text("""
+        SELECT 
+            AVG(numar_oameni) AS medie,
+            MAX(numar_oameni) AS maxim
+        FROM date_colectate
+        WHERE id_sala = :id_sala
+    """), {"id_sala": id_sala}).fetchone()
+
+    daily = db.execute(text("""
+        SELECT 
+            CONCAT(an,'-',LPAD(luna,2,'0'),'-',LPAD(zi,2,'0')) AS data,
+            AVG(numar_oameni) AS medie
+        FROM date_colectate
+        WHERE id_sala = :id_sala
+        GROUP BY an,luna,zi
+        ORDER BY an,luna,zi
+    """), {"id_sala": id_sala}).fetchall()
+
+    hourly = db.execute(text("""
+        SELECT 
+            HOUR(ora) AS ora,
+            AVG(numar_oameni) AS medie
+        FROM date_colectate
+        WHERE id_sala = :id_sala
+        GROUP BY HOUR(ora)
+        ORDER BY ora
+    """), {"id_sala": id_sala}).fetchall()
+
+    return {
+        "kpi": {
+            "medie": round(kpi.medie or 0, 2),
+            "maxim": kpi.maxim or 0
+        },
+        "daily": [{"data": d.data, "medie": float(d.medie)} for d in daily],
+        "hourly": [{"ora": h.ora, "medie": float(h.medie)} for h in hourly]
+    }

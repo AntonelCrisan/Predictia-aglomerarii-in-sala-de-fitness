@@ -112,24 +112,23 @@ function PredictorCard() {
   };
 
   // ====== OPEN POPUP DETALII APARATE ======
-  const openMachineDetails = async (category, pct) => {
-    const cat = category.replace("ocupare_", ""); // ex: ocupare_picioare → picioare
+ const openMachineDetails = async (category, pct) => {
+  const cat = category.replace("ocupare_", "");
 
-    const response = await fetch("http://localhost:8000/detalii_aparate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        categorie: cat,
-        procent: pct,
-        id_sala: Number(selectedGym),
-      }),
-    });
+  const response = await fetch("http://localhost:8000/detalii_aparate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      categorie: cat,
+      procent: Math.round(pct),
+      numar_oameni: predictionPeople,
+      id_sala: Number(selectedGym),
+    }),
+  });
 
-    const data = await response.json();
-
-    setSelectedCategory(cat);
-    setPopupData(data);
-  };
+  const data = await response.json();
+  setPopupData(data);
+};
 
   return (
     <div

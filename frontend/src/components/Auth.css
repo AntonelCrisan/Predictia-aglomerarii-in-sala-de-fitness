@@ -47,7 +47,7 @@
    INPUT GROUPS
 ============================ */
 .auth-group {
-  margin-bottom: 32px; 
+  margin-bottom: 24px; 
   text-align: left;
   width: 100%;
 }
@@ -55,31 +55,54 @@
 .auth-group label {
   display: block;
   margin-bottom: 10px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   opacity: 0.95;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  color: #b8e6d5;
+}
+
+/* ============================
+   INPUT WITH ICON WRAPPER
+============================ */
+.input-with-icon {
+  position: relative;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* INPUT MAI MARE & ELEGANT */
 .auth-input {
   width: 100%;
-  padding: 20px 24px;
+  padding: 18px 24px 18px 52px;
   background: rgba(255, 255, 255, 0.12);
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 16px;
   color: white;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 500;
   backdrop-filter: blur(12px);
   outline: none;
   transition: all 0.3s ease;
-  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.auth-input.with-toggle {
+  padding-right: 52px;
 }
 
 .auth-input:hover {
   background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .auth-input:focus {
@@ -88,8 +111,13 @@
   box-shadow: 0 0 0 4px rgba(118, 200, 147, 0.25);
 }
 
+.auth-input:focus + .input-icon,
+.auth-input:focus ~ .toggle-pass-btn {
+  color: #76c893;
+}
+
 .auth-input::placeholder {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* ============================
@@ -97,19 +125,39 @@
 ============================ */
 .auth-select {
   width: 100%;
-  padding: 18px 20px;
-  border-radius: 14px;
+  padding: 18px 24px 18px 52px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.12);
   border: 2px solid rgba(255, 255, 255, 0.25);
   color: white;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 500;
   outline: none;
   cursor: pointer;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  padding-right: 48px;
+}
+
+.auth-select:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.auth-select:focus {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: #76c893;
+  box-shadow: 0 0 0 4px rgba(118, 200, 147, 0.25);
 }
 
 .auth-select option {
-  color: black;
+  background: #1a2f3a;
+  color: white;
+  padding: 12px;
 }
 
 /* ============================
@@ -117,27 +165,46 @@
 ============================ */
 .error {
   color: #ff6b6b;
-  font-size: 14px;
+  font-size: 13px;
   margin-top: 6px;
-  margin-bottom: -20px;
   font-weight: 600;
 }
 
-/* ============================
-   PASSWORD SHOW/HIDE ICON
-============================ */
-.password-wrapper {
-  position: relative;
+.error-message {
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #ff6b6b;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-align: center;
 }
 
-.toggle-pass {
+/* ============================
+   PASSWORD TOGGLE BUTTON
+============================ */
+.toggle-pass-btn {
   position: absolute;
-  right: 16px;
+  right: 18px;
   top: 50%;
   transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  font-size: 22px;
-  user-select: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.toggle-pass-btn:hover {
+  color: #76c893;
+  transform: translateY(-50%) scale(1.1);
 }
 
 /* ============================
@@ -145,28 +212,54 @@
 ============================ */
 .auth-btn {
   width: 100%;
-  padding: 20px;
+  padding: 18px;
   background: linear-gradient(135deg, #76c893, #52b788);
   border: none;
   border-radius: 16px;
-  color: white;
-  font-weight: 800;
-  font-size: 17px;
+  color: #0d1b1e;
+  font-weight: 700;
+  font-size: 16px;
   text-transform: uppercase;
   cursor: pointer;
   letter-spacing: 0.6px;
-  margin-top: 30px;
+  margin-top: 10px;
   box-shadow: 0 14px 34px rgba(118, 200, 147, 0.35);
-  transition: 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .auth-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 18px 40px rgba(118, 200, 147, 0.45);
+  background: linear-gradient(135deg, #52b788, #40916c);
 }
 
 .auth-btn:active {
   transform: translateY(0);
+}
+
+/* ============================
+   FOOTER LINK
+============================ */
+.auth-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.auth-footer p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+}
+
+.auth-footer .link {
+  color: #76c893;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: underline;
+}
+
+.auth-footer .link:hover {
+  color: #52b788;
 }
 
 /* ============================
@@ -191,15 +284,18 @@
     padding: 40px 30px;
   }
 
+  .auth-card h2 {
+    font-size: 28px;
+  }
+
   .auth-input,
   .auth-select {
-    padding: 16px;
-    font-size: 16px;
+    padding: 16px 20px 16px 48px;
+    font-size: 15px;
   }
 
   .auth-btn {
-    padding: 18px;
+    padding: 16px;
     font-size: 15px;
   }
 }
-

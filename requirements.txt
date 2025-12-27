@@ -9,3 +9,4 @@ python-multipart
 PyMySQL
 bcrypt
 python-jose[cryptography]
+sqlalchemy
